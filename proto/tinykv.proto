@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package tinykv;
+
+service tinykv {
+    rpc Put(PutRequest) returns (ActionResult);
+    rpc Get(GetRequest) returns (ActionResult);
+    rpc Delete(DeleteRequest) returns (ActionResult);
+}
+
+message PutRequest {
+    string cf = 1;
+    string k = 2;
+    string v = 3;
+}
+
+message GetRequest { 
+    string cf = 1;
+    string k = 2;
+}
+
+message DeleteRequest { 
+    string cf = 1;
+    string k = 2;
+}
+
+message ActionResult {
+    string result = 1;
+}

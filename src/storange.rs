@@ -14,8 +14,8 @@ pub enum StorageError {
     InsertionFailed,
 }
 
-#[derive(Default)]
-struct Storage(Arc<Mutex<HashMap<String, HashMap<String, String>>>>);
+#[derive(Default, Debug)]
+pub struct Storage(Arc<Mutex<HashMap<String, HashMap<String, String>>>>);
 
 impl Storage {
     /// replaces the value for a particular key for the specified CF in the database
