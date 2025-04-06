@@ -14,6 +14,20 @@ Inspired by [tinykv](https://github.com/talent-plan/tinykv/blob/course/doc/proje
 cargo build
 ```
 
+## Testing
+
+Run the service
+
+```cmd
+cargo run
+```
+
+Test the service by using [`grpcui`](https://github.com/fullstorydev/grpcui)
+
+```cmd
+grpcui -plaintext localhost:50051
+```
+
 ## Features
 
 - In-memory data storage
