@@ -8,6 +8,7 @@ thiserror = "2.0.12"
 prost = "0.13.5"
 tonic = "0.13.0"
 tokio = { version = "1.44.2", features = ["full"] }
+tonic-reflection = "0.13.0"
 
 [build-dependencies]
 tonic-build = "0.13.0"

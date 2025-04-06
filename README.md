@@ -1,6 +1,8 @@
-# Tiny-kv
+# tiny-kv
 
-Redis clone with a gRPC interface. Inspired by [tinykv](https://github.com/talent-plan/tinykv/blob/course/doc/project1-StandaloneKV.md)
+Redis clone with a gRPC interface. Reflection is supported.
+
+Inspired by [tinykv](https://github.com/talent-plan/tinykv/blob/course/doc/project1-StandaloneKV.md)
 
 ## Setup
 
@@ -11,3 +13,8 @@ Redis clone with a gRPC interface. Inspired by [tinykv](https://github.com/talen
 ```cmd
 cargo build
 ```
+
+## Features
+
+- Reflection support
+  - allows the server to shared the `grpc` contract with clients.
