@@ -3,9 +3,9 @@ syntax = "proto3";
 package tinykv;
 
 service tinykv {
-    rpc Put(PutRequest) returns (ActionResult);
-    rpc Get(GetRequest) returns (ActionResult);
-    rpc Delete(DeleteRequest) returns (ActionResult);
+    rpc Put(PutRequest) returns (TinykvResult);
+    rpc Get(GetRequest) returns (TinykvResult);
+    rpc Delete(DeleteRequest) returns (TinykvResult);
 }
 
 message PutRequest {
@@ -14,16 +14,18 @@ message PutRequest {
     string v = 3;
 }
 
-message GetRequest { 
+message GetRequest {
     string cf = 1;
     string k = 2;
 }
 
-message DeleteRequest { 
+message DeleteRequest {
     string cf = 1;
     string k = 2;
 }
 
-message ActionResult {
-    string result = 1;
+message TinykvResult {
+    bool success = 1;
+    string data = 2;
+    string error = 3;
 }
