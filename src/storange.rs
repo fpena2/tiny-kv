@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     sync::{Arc, Mutex},
 };
 use thiserror::Error;
@@ -8,14 +8,18 @@ use thiserror::Error;
 pub enum StorageError {
     #[error("Failed to acquire mutex lock")]
     MutexLock,
+    #[error("Column family not found")]
+    CFKeyNotFound,
     #[error("Key not found in the specified column family")]
     KeyNotFound,
     #[error("Failed to insert value")]
     InsertionFailed,
 }
 
+/// Using BTreeMap to support range queries within a CF.
+/// Howeve, BTreeMap will yield slower insertions and deletions when compared to HashMap.
 #[derive(Default, Debug)]
-pub struct Storage(Arc<Mutex<HashMap<String, HashMap<String, String>>>>);
+pub struct Storage(Arc<Mutex<HashMap<String, BTreeMap<String, String>>>>);
 
 impl Storage {
     /// replaces the value for a particular key for the specified CF in the database
@@ -23,31 +27,52 @@ impl Storage {
         let mut storage = self.0.lock().map_err(|_| StorageError::MutexLock)?;
         storage
             .entry(column_family.to_string())
-            .or_insert(HashMap::new())
+            .or_insert(BTreeMap::new())
             .insert(k.to_string(), v.to_string());
-
         Ok(())
     }
     /// fetches the current value for a key for the specified CF
     pub fn get(&self, column_family: &str, k: &str) -> Result<String, StorageError> {
         let storage = self.0.lock().map_err(|_| StorageError::MutexLock)?;
-        if let Some(family) = storage.get(column_family) {
-            if let Some(value) = family.get(k) {
-                return Ok(value.clone());
-            }
-        }
-        Err(StorageError::KeyNotFound)
+        let family = storage
+            .get(column_family)
+            .ok_or(StorageError::CFKeyNotFound)?;
+        let found_value = family.get(k).ok_or(StorageError::KeyNotFound)?;
+        Ok(found_value.clone())
     }
 
     /// deletes the key's value for the specified CF
     pub fn delete(&self, column_family: &str, k: &str) -> Result<String, StorageError> {
         let mut storage = self.0.lock().map_err(|_| StorageError::MutexLock)?;
-        if let Some(family) = storage.get_mut(column_family) {
-            if let Some(value) = family.remove(k) {
-                return Ok(value);
-            }
+        let family = storage
+            .get_mut(column_family)
+            .ok_or(StorageError::CFKeyNotFound)?;
+        let removed_value = family.remove(k).ok_or(StorageError::KeyNotFound)?;
+        Ok(removed_value)
+    }
+
+    /// fetches the current value for a series of keys for the specified CF
+    pub fn scan(
+        &self,
+        column_family: &str,
+        start_k: &str,
+        limit: usize,
+    ) -> Result<Vec<String>, StorageError> {
+        let storage = self.0.lock().map_err(|_| StorageError::MutexLock)?;
+        let family = storage
+            .get(column_family)
+            .ok_or(StorageError::CFKeyNotFound)?;
+
+        let values: Vec<String> = family
+            .range(start_k.to_string()..)
+            .take(limit)
+            .map(|(_, value)| value.clone())
+            .collect();
+
+        match values.len() {
+            0 => Err(StorageError::KeyNotFound),
+            _ => Ok(values),
         }
-        Err(StorageError::KeyNotFound)
     }
 }
 
@@ -58,34 +83,53 @@ mod tests {
     #[test]
     fn test_put() {
         let column_family = "c";
-        let k = "k";
-        let v = "v";
-
         let storage = Storage::default();
-
-        assert_eq!(storage.put(column_family, k, v), Ok(()));
+        assert_eq!(storage.put(column_family, "k", "v"), Ok(()));
     }
+
     #[test]
     fn test_get() {
         let column_family = "c";
-        let k = "k";
-        let v = "v";
-
         let storage = Storage::default();
-        storage.put(column_family, k, v).unwrap();
+        storage.put(column_family, "k", "v").unwrap();
 
-        assert_eq!(storage.get(column_family, k), Ok(String::from(v)));
+        assert_eq!(storage.get(column_family, "k"), Ok(String::from("v")));
+        assert_eq!(
+            storage.get(column_family, "a"),
+            Err(StorageError::KeyNotFound)
+        );
     }
 
     #[test]
     fn test_delete() {
         let column_family = "c";
-        let k = "k";
-        let v = "v";
-
         let storage = Storage::default();
-        storage.put(column_family, k, v).unwrap();
+        storage.put(column_family, "k", "v").unwrap();
 
-        assert_eq!(storage.delete(column_family, k), Ok(String::from(v)));
+        assert_eq!(storage.delete(column_family, "k"), Ok(String::from("v")));
+        assert_eq!(
+            storage.delete(column_family, "k"),
+            Err(StorageError::KeyNotFound)
+        );
+    }
+
+    #[test]
+    fn test_scan() {
+        let column_family = "c";
+        let storage = Storage::default();
+        storage.put(column_family, "0", "000").unwrap();
+        storage.put(column_family, "1", "111").unwrap();
+        storage.put(column_family, "2", "222").unwrap();
+        storage.put(column_family, "3", "333").unwrap();
+        storage.put(column_family, "4", "444").unwrap();
+        storage.put(column_family, "5", "555").unwrap();
+
+        let values = storage.scan(column_family, "2", 2).unwrap();
+        assert_eq!(values, vec!["222", "333"]);
+
+        let values = storage.scan(column_family, "2", 10).unwrap();
+        assert_eq!(values, vec!["222", "333", "444", "555"]);
+
+        // TODO: test when limit is 0
     }
 }
