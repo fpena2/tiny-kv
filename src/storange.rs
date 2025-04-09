@@ -57,16 +57,16 @@ impl Storage {
         column_family: &str,
         start_k: &str,
         limit: usize,
-    ) -> Result<Vec<String>, StorageError> {
+    ) -> Result<Vec<(String, String)>, StorageError> {
         let storage = self.0.lock().map_err(|_| StorageError::MutexLock)?;
         let family = storage
             .get(column_family)
             .ok_or(StorageError::CFKeyNotFound)?;
 
-        let values: Vec<String> = family
+        let values: Vec<(String, String)> = family
             .range(start_k.to_string()..)
             .take(limit)
-            .map(|(_, value)| value.clone())
+            .map(|(k, v)| (k.clone(), v.clone()))
             .collect();
 
         match values.len() {
@@ -94,10 +94,10 @@ mod tests {
         storage.put(column_family, "k", "v").unwrap();
 
         assert_eq!(storage.get(column_family, "k"), Ok(String::from("v")));
-        assert_eq!(
+        assert!(matches!(
             storage.get(column_family, "a"),
             Err(StorageError::KeyNotFound)
-        );
+        ));
     }
 
     #[test]
@@ -107,10 +107,10 @@ mod tests {
         storage.put(column_family, "k", "v").unwrap();
 
         assert_eq!(storage.delete(column_family, "k"), Ok(String::from("v")));
-        assert_eq!(
+        assert!(matches!(
             storage.delete(column_family, "k"),
             Err(StorageError::KeyNotFound)
-        );
+        ));
     }
 
     #[test]
@@ -125,10 +125,21 @@ mod tests {
         storage.put(column_family, "5", "555").unwrap();
 
         let values = storage.scan(column_family, "2", 2).unwrap();
-        assert_eq!(values, vec!["222", "333"]);
+        assert_eq!(
+            values,
+            vec![("2".into(), "222".into()), ("3".into(), "333".into())]
+        );
 
         let values = storage.scan(column_family, "2", 10).unwrap();
-        assert_eq!(values, vec!["222", "333", "444", "555"]);
+        assert_eq!(
+            values,
+            vec![
+                ("2".into(), "222".into()),
+                ("3".into(), "333".into()),
+                ("4".into(), "444".into()),
+                ("5".into(), "555".into())
+            ]
+        );
 
         // TODO: test when limit is 0
     }
