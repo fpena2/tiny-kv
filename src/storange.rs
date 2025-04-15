@@ -1,3 +1,4 @@
+use std::num::NonZeroUsize;
 use std::{
     collections::{BTreeMap, HashMap},
     sync::{Arc, Mutex},
@@ -56,7 +57,7 @@ impl Storage {
         &self,
         column_family: &str,
         start_k: &str,
-        limit: usize,
+        limit: NonZeroUsize,
     ) -> Result<Vec<(String, String)>, StorageError> {
         let storage = self.0.lock().map_err(|_| StorageError::MutexLock)?;
         let family = storage
@@ -65,7 +66,7 @@ impl Storage {
 
         let values: Vec<(String, String)> = family
             .range(start_k.to_string()..)
-            .take(limit)
+            .take(limit.get())
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect();
 
@@ -124,13 +125,15 @@ mod tests {
         storage.put(column_family, "4", "444").unwrap();
         storage.put(column_family, "5", "555").unwrap();
 
-        let values = storage.scan(column_family, "2", 2).unwrap();
+        let limit = NonZeroUsize::new(2).unwrap();
+        let values = storage.scan(column_family, "2", limit).unwrap();
         assert_eq!(
             values,
             vec![("2".into(), "222".into()), ("3".into(), "333".into())]
         );
 
-        let values = storage.scan(column_family, "2", 10).unwrap();
+        let limit = NonZeroUsize::new(10).unwrap();
+        let values = storage.scan(column_family, "2", limit).unwrap();
         assert_eq!(
             values,
             vec![
@@ -140,7 +143,5 @@ mod tests {
                 ("5".into(), "555".into())
             ]
         );
-
-        // TODO: test when limit is 0
     }
 }

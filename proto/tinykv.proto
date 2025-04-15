@@ -51,6 +51,5 @@ message ScanRequest {
 }
 
 message ScanResponse {
-    string error = 1;
-    repeated KvPair data = 2;
+    repeated KvPair data = 1;
 }

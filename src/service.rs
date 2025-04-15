@@ -4,6 +4,7 @@ use crate::proto::{
     ScanRequest, ScanResponse,
 };
 use crate::storange::Storage;
+use std::num::NonZeroUsize;
 
 #[derive(Debug, Default)]
 pub struct Service {
@@ -21,14 +22,15 @@ impl Tinykv for Service {
         let k = msg.k;
         let v = msg.v;
 
-        match self.db.put(&cf, &k, &v) {
-            Ok(()) => Ok(tonic::Response::new(PutResponse {
-                error: String::from(""),
-            })),
-            Err(e) => Ok(tonic::Response::new(PutResponse {
-                error: e.to_string(),
-            })),
-        }
+        // TODO: catch the errors and pass them in the response as string
+        let _ = self
+            .db
+            .put(&cf, &k, &v)
+            .map_err(|e| tonic::Status::internal(format!("Database error: {}", e)))?;
+
+        Ok(tonic::Response::new(PutResponse {
+            error: String::from(""),
+        }))
     }
 
     async fn get(
@@ -39,16 +41,15 @@ impl Tinykv for Service {
         let cf = msg.cf;
         let k = msg.k;
 
-        match self.db.get(&cf, &k) {
-            Ok(value) => Ok(tonic::Response::new(GetResponse {
-                error: String::from(""),
-                value: value,
-            })),
-            Err(e) => Ok(tonic::Response::new(GetResponse {
-                error: e.to_string(),
-                value: String::from(""),
-            })),
-        }
+        let value = self
+            .db
+            .get(&cf, &k)
+            .map_err(|e| tonic::Status::internal(format!("Database error: {}", e)))?;
+
+        Ok(tonic::Response::new(GetResponse {
+            error: String::from(""),
+            value: value,
+        }))
     }
 
     async fn delete(
@@ -59,14 +60,14 @@ impl Tinykv for Service {
         let cf = msg.cf;
         let k = msg.k;
 
-        match self.db.delete(&cf, &k) {
-            Ok(_value) => Ok(tonic::Response::new(DeleteResponse {
-                error: String::from(""),
-            })),
-            Err(e) => Ok(tonic::Response::new(DeleteResponse {
-                error: e.to_string(),
-            })),
-        }
+        let _deleted_value = self
+            .db
+            .delete(&cf, &k)
+            .map_err(|e| tonic::Status::internal(format!("Database error: {}", e)))?;
+
+        Ok(tonic::Response::new(DeleteResponse {
+            error: String::from(""),
+        }))
     }
 
     async fn scan(
@@ -76,19 +77,24 @@ impl Tinykv for Service {
         let msg = request.into_inner();
         let cf = msg.cf;
         let k = msg.k;
-        let limit: usize = msg.limit.try_into().unwrap();
-        match self.db.scan(&cf, &k, limit) {
-            Ok(values) => {
-                let pairs: Vec<KvPair> = values.iter().map(|p| KvPair::new(&p.0, &p.1)).collect();
-                Ok(tonic::Response::new(ScanResponse {
-                    error: String::from(""),
-                    data: pairs,
-                }))
+        let limit = msg.limit;
+
+        let limit: NonZeroUsize = match limit.try_into() {
+            Ok(usize_limit) => NonZeroUsize::new(usize_limit)
+                .ok_or_else(|| tonic::Status::invalid_argument("Limit cannot be zero"))?,
+            Err(_) => {
+                return Err(tonic::Status::invalid_argument(
+                    "Limit too large for this architecture",
+                ));
             }
-            Err(e) => Ok(tonic::Response::new(ScanResponse {
-                error: e.to_string(),
-                data: vec![],
-            })),
-        }
+        };
+
+        let values = self
+            .db
+            .scan(&cf, &k, limit)
+            .map_err(|e| tonic::Status::internal(format!("Database error: {}", e)))?;
+
+        let pairs: Vec<KvPair> = values.iter().map(|p| KvPair::new(&p.0, &p.1)).collect();
+        Ok(tonic::Response::new(ScanResponse { data: pairs }))
     }
 }
