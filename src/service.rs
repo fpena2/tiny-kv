@@ -3,7 +3,7 @@ use crate::proto::{
     DeleteRequest, DeleteResponse, GetRequest, GetResponse, KvPair, PutRequest, PutResponse,
     ScanRequest, ScanResponse,
 };
-use crate::storange::Storage;
+use crate::storage::Storage;
 use std::num::NonZeroUsize;
 
 #[derive(Debug, Default)]

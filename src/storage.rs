@@ -18,7 +18,7 @@ pub enum StorageError {
 }
 
 /// Using BTreeMap to support range queries within a CF.
-/// Howeve, BTreeMap will yield slower insertions and deletions when compared to HashMap.
+/// However, BTreeMap will yield slower insertions and deletions when compared to HashMap.
 #[derive(Default, Debug)]
 pub struct Storage(Arc<Mutex<HashMap<String, BTreeMap<String, String>>>>);
 
