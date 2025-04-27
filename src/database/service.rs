@@ -1,18 +1,19 @@
-use crate::proto::tinykv_server::Tinykv; // proto pakage trait
-use crate::proto::{
+use crate::database::proto::storage_server::Storage; // proto package trait
+use crate::database::proto::{
     DeleteRequest, DeleteResponse, GetRequest, GetResponse, KvPair, PutRequest, PutResponse,
     ScanRequest, ScanResponse,
 };
-use crate::storage::Storage;
 use std::num::NonZeroUsize;
+
+use crate::database::memory_storage::MemoryStorage;
 
 #[derive(Debug, Default)]
 pub struct Service {
-    db: Storage,
+    db: MemoryStorage,
 }
 
 #[tonic::async_trait]
-impl Tinykv for Service {
+impl Storage for Service {
     async fn put(
         &self,
         request: tonic::Request<PutRequest>,

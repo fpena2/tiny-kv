@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package tinykv;
+package storage;
 
-service tinykv {
+service storage {
     rpc Put(PutRequest) returns (PutResponse);
     rpc Get(GetRequest) returns (GetResponse);
     rpc Delete(DeleteRequest) returns (DeleteResponse);

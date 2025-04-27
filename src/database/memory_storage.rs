@@ -20,9 +20,9 @@ pub enum StorageError {
 /// Using BTreeMap to support range queries within a CF.
 /// However, BTreeMap will yield slower insertions and deletions when compared to HashMap.
 #[derive(Default, Debug)]
-pub struct Storage(Arc<Mutex<HashMap<String, BTreeMap<String, String>>>>);
+pub struct MemoryStorage(Arc<Mutex<HashMap<String, BTreeMap<String, String>>>>);
 
-impl Storage {
+impl MemoryStorage {
     /// replaces the value for a particular key for the specified CF in the database
     pub fn put(&self, column_family: &str, k: &str, v: &str) -> Result<(), StorageError> {
         let mut storage = self.0.lock().map_err(|_| StorageError::MutexLock)?;
@@ -84,14 +84,14 @@ mod tests {
     #[test]
     fn test_put() {
         let column_family = "c";
-        let storage = Storage::default();
+        let storage = MemoryStorage::default();
         assert_eq!(storage.put(column_family, "k", "v"), Ok(()));
     }
 
     #[test]
     fn test_get() {
         let column_family = "c";
-        let storage = Storage::default();
+        let storage = MemoryStorage::default();
         storage.put(column_family, "k", "v").unwrap();
 
         assert_eq!(storage.get(column_family, "k"), Ok(String::from("v")));
@@ -104,7 +104,7 @@ mod tests {
     #[test]
     fn test_delete() {
         let column_family = "c";
-        let storage = Storage::default();
+        let storage = MemoryStorage::default();
         storage.put(column_family, "k", "v").unwrap();
 
         assert_eq!(storage.delete(column_family, "k"), Ok(String::from("v")));
@@ -117,7 +117,7 @@ mod tests {
     #[test]
     fn test_scan() {
         let column_family = "c";
-        let storage = Storage::default();
+        let storage = MemoryStorage::default();
         storage.put(column_family, "0", "000").unwrap();
         storage.put(column_family, "1", "111").unwrap();
         storage.put(column_family, "2", "222").unwrap();

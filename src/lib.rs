@@ -1,3 +1,2 @@
-pub mod proto;
-pub mod service;
-pub mod storage;
+pub mod database;
+pub mod raft;
