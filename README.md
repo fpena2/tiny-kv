@@ -8,6 +8,16 @@ Inspired by [tinykv](https://github.com/talent-plan/tinykv/blob/course/doc/proje
 
 - Install [`protoc`](https://protobuf.dev/installation/)
 
+  ```cmd
+  sudo apt install -y protobuf-compiler
+  ```
+
+- Install build essentials
+
+  ```cmd
+  sudo apt install build-essential
+  ```
+
 ## Build
 
 ```cmd
